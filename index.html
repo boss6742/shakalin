@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>шакалин</title>
+<style>
+  body{
+    margin:0;
+    background:#0b0b0b;
+    color:white;
+    font-family:Arial;
+    display:flex;
+    height:100vh;
+  }
+
+  .panel{
+    width:320px;
+    padding:15px;
+    background:#151515;
+    overflow:auto;
+  }
+
+  canvas{
+    flex:1;
+    margin:auto;
+    max-width:100%;
+    max-height:100%;
+    image-rendering: pixelated;
+  }
+
+  input, button{
+    width:100%;
+    margin:6px 0;
+  }
+
+  label{
+    font-size:12px;
+    opacity:0.8;
+  }
+
+  button{
+    padding:10px;
+    background:#ff2d2d;
+    color:white;
+    border:none;
+    cursor:pointer;
+    font-weight:bold;
+  }
+</style>
+</head>
+<body>
+
+<div class="panel">
+<h2>шакалин</h2>
+
+<input type="file" id="upload">
+
+<label>Quality</label>
+<input type="range" id="q" min="0.02" max="1" step="0.01" value="0.3">
+
+<label>Pixel size</label>
+<input type="range" id="px" min="1" max="50" value="10">
+
+<label>Shakal loops</label>
+<input type="range" id="loop" min="1" max="30" value="10">
+
+<label>Noise</label>
+<input type="range" id="noise" min="0" max="100" value="30">
+
+<label>Invert</label>
+<input type="checkbox" id="inv">
+
+<label>Contrast</label>
+<input type="range" id="contrast" min="0.5" max="3" step="0.1" value="1.5">
+
+<button onclick="download()">⬇ DOWNLOAD</button>
+</div>
+
+<canvas id="c"></canvas>
+
+<script>
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+let img = new Image();
+
+function noise(str){
+  let d = ctx.getImageData(0,0,canvas.width,canvas.height);
+  let data = d.data;
+  for(let i=0;i<data.length;i+=4){
+    let n = (Math.random()-0.5)*str;
+    data[i]+=n;
+    data[i+1]+=n;
+    data[i+2]+=n;
+  }
+  ctx.putImageData(d,0,0);
+}
+
+function render(){
+  if(!img.src) return;
+
+  let q = parseFloat(qs("q"));
+  let px = parseInt(qs("px"));
+  let loop = parseInt(qs("loop"));
+  let n = parseInt(qs("noise"));
+  let inv = document.getElementById("inv").checked;
+  let contrast = parseFloat(qs("contrast"));
+
+  let w = img.width / px;
+  let h = img.height / px;
+
+  canvas.width = w;
+  canvas.height = h;
+
+  ctx.filter = `contrast(${contrast})`;
+  ctx.drawImage(img,0,0,w,h);
+
+  for(let i=0;i<loop;i++){
+    let data = canvas.toDataURL("image/jpeg", q);
+    let t = new Image();
+    t.src = data;
+    ctx.drawImage(t,0,0,w,h);
+  }
+
+  if(inv){
+    ctx.globalCompositeOperation = "difference";
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,w,h);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  noise(n);
+}
+
+function qs(id){
+  return document.getElementById(id).value;
+}
+
+document.querySelectorAll("input").forEach(i=>{
+  i.oninput = render;
+});
+
+document.getElementById("upload").onchange = e=>{
+  let r = new FileReader();
+  r.onload = ev=>{
+    img = new Image();
+    img.onload = render;
+    img.src = ev.target.result;
+  };
+  r.readAsDataURL(e.target.files[0]);
+};
+
+function download(){
+  let link = document.createElement("a");
+  link.download = "шакалин.png";
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+</script>
+
+</body>
+</html>
